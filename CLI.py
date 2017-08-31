@@ -2,7 +2,7 @@
 import argparse
 import os
 import subprocess
-import socket
+import json
 
 ALLOWED_EXTENSIONS_APK = set(['apk'])
 
@@ -22,7 +22,6 @@ def check(list):
                 cond += ", "
     else:
         cond += '""'
-
     return cond
 
 def check_file_exists(path_filename):
@@ -30,25 +29,29 @@ def check_file_exists(path_filename):
         return False
     return True
 
+def create_json(data, object, key, value):
+    data[object].update({key: value})
+    return data
+
 def main():
     parser = argparse.ArgumentParser()
     
-    # host IP
-    parser.add_argument('--host', type=str, help="Host IP")
+    # internet address
+    parser.add_argument('--address', type=str, help="Host IP or web address")
     
     # test_project_name
-    parser.add_argument('-n', '--name', type=str, help="Test project name")
+    parser.add_argument('--project', type=str, help="Test project name")
     
     # apk_file / apke_test_file
     parser.add_argument('--apk', nargs=1, help="Application APK")
     parser.add_argument('--test-apk', nargs=1, help="Test application APK")
     
     # conditions
-    parser.add_argument('--os', nargs='*', help="Android release")
-    parser.add_argument('--API', nargs='*', help="API Level")
-    parser.add_argument('--deviceType', nargs='*', help="Board Specifications")
-    parser.add_argument('--display', nargs='*', help="Density")
-    parser.add_argument('--arch', nargs='*', help="CPU")
+    parser.add_argument('--os', nargs='*', default=[''], help="Android release")
+    parser.add_argument('--API', nargs='*', default=[''], help="API Level")
+    parser.add_argument('--deviceType', nargs='*', default=[''], help="Board Specifications")
+    parser.add_argument('--display', nargs='*', default=[''], help="Density")
+    parser.add_argument('--arch', nargs='*', default=[''], help="CPU")
     
     # optional arguments
     parser.add_argument('--adb-timeout', nargs=1, help="Set maximum execution time per test in seconds")
@@ -61,20 +64,13 @@ def main():
     args = parser.parse_args()
     print args
         
-    host = '127.0.0.1'
+    address = '127.0.0.1:5000'
     
-    if args.host:
-        try:
-            socket.inet_pton(socket.AF_INET, args.host)
-            host = args.host
-            print host
-        
-        except socket.error:
-            print "invalid IP"
-            return
-    
-    if args.apk and args.test_apk and args.name:
-        test_project_name = args.name
+    if args.address:
+        address = args.address
+
+    if args.apk and args.test_apk and args.project:
+        test_project_name = args.project
         apk_file = args.apk[0]
         apk_test_file = args.test_apk[0]
         
@@ -82,10 +78,15 @@ def main():
             print "please make sure the files are in .apk format"
             return
         
-        if not check_file_exists(apk_file) or not check_file_exists(apk_test_file):
+        if check_file_exists(apk_file) or check_file_exists(apk_test_file):
             print "no apk or test_apk file in current folder"
             return
-        
+
+        # uploads
+        subprocess.check_call(['curl', '-F', 'test_project_name=' + test_project_name, '-F', 'apk_file=@' + apk_file, '-F', 'apk_test_file=@' + apk_test_file, '-X', 'POST', address + '/uploads'])
+
+    if args.project:
+        test_project_name = args.project
         conditions = ""
         full_conditions = ""
         
@@ -111,24 +112,28 @@ def main():
             print "Project: " + test_project_name
             print "APK: " + apk_file, apk_test_file
             print "Requirements: " + conditions
-        
-        informations = '{"project":{"project_name": "' + test_project_name + '"},"devices":{"os": [ ' + check(args.os) + ' ],"API Level" : [ ' + check(args.API) + ' ],"deviceType" : [ ' + check(args.deviceType) + ' ],"display" : [ ' + check(args.display) + ' ],"arch" : [ ' + check(args.arch) + ' ]}}'
-        
-        f = open("testing_project.json", 'w')
-        f.write(informations)
-        f.close()
-        
-        # uploads
-        os.system('curl -F "test_project_name=' + test_project_name + '" -F "apk_file=@' + apk_file + '" -F "apk_test_file=@' + apk_test_file + '" -X POST http://127.0.0.1:5000/uploads')
-        #subprocess.check_output(['curl -F "test_project_name=', test_project_name, '" -F "apk_file=@', apk_file, '" -F "apk_test_file=@', apk_test_file, '" -X POST http://127.0.0.1:5000/uploads'])
-        
+
+        data = {}
+        data['project'] = {}
+        data['devices'] = {}
+        data = create_json(data, 'project', 'project_name', test_project_name)
+        data = create_json(data, 'devices', 'os', args.os)
+        data = create_json(data, 'devices', 'API Level', args.API)
+        data = create_json(data, 'devices', 'deviceType', args.deviceType)
+        data = create_json(data, 'devices', 'display', args.display)
+        data = create_json(data, 'devices', 'arch', args.arch)
+
+        with open("testing_project.json", 'w') as outfile:
+            json.dump(data, outfile, indent=4)
+
         # test
-        os.system('curl -F "testing_project_json=@testing_project.json" -X POST http://' + host + ':5000/uploads_testing_project')
-        os.system('rm testing_project.json')
+        subprocess.check_call(['curl', '-F', 'testing_project_json=@testing_project.json', '-X', 'POST', address + '/uploads_testing_project'])
+
+        #subprocess.call(['rm', 'testing_project.json'])
 
     else:
         # get sevices status
-        os.system('curl http://' + host + ':5000/get_devices_status')
+        subprocess.call(['curl', address + '/get_devices_status'])
 
 if __name__ == '__main__':
     main()
