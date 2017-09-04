@@ -46,7 +46,6 @@ def main():
     show_group = parser.add_mutually_exclusive_group()
     
     # informations
-    show_group.add_argument('-q', '--quiet', action='store_true', help="simple output")
     show_group.add_argument('-v', '--verbose', action='store_true', help="detailed output")
     
     args = parser.parse_args()
@@ -63,6 +62,10 @@ def main():
             
             # uploads
             subprocess.check_call(['curl', '-F', 'test_project_name=' + args.project, '-F', 'apk_file=@' + args.apk, '-F', 'apk_test_file=@' + args.test_apk, '-X', 'POST', args.address + '/uploads'])
+    
+        if args.apk is None and args.test_apk is None:
+            args.apk = ''
+            args.test_apk = ''
 
         data = {}
         data['project'] = {}
@@ -91,12 +94,6 @@ def main():
             print 'The test project name is "' + args.project + '"'
             print 'APK files are "' + args.apk + '", "' + args.test_apk + '"'
             print full_conditions
-
-        # show simple informations
-        elif args.quiet:
-            print args.project
-            print args.apk, args.test_apk
-            print conditions
         
         # show defualt
         else:
