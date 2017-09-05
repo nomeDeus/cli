@@ -24,14 +24,14 @@ def main():
     parser = argparse.ArgumentParser()
     
     # internet address
-    parser.add_argument('--address', default='127.0.0.1:5000', type=str, help="Host IP or web address")
+    parser.add_argument('-addr', '--address', default='127.0.0.1:5000', type=str, help="Host IP address")
     
     # test_project_name
-    parser.add_argument('-project', type=str, help="Test project name")
+    parser.add_argument('-p', '--project', type=str, help="Test project name")
     
     # apk_file / apke_test_file
-    parser.add_argument('-apk', type=str, help="Application APK")
-    parser.add_argument('-test-apk', type=str, help="Test application APK")
+    parser.add_argument('-a', '--apk', type=str, help="Application APK")
+    parser.add_argument('-t', '--test-apk', type=str, help="Test application APK")
     
     # conditions
     parser.add_argument('-os', nargs='+', help="Android release")
@@ -41,12 +41,7 @@ def main():
     parser.add_argument('-arch', nargs='+', help="CPU")
     
     # optional arguments
-    parser.add_argument('-status', action='store_true', help="Show devices status")
-    
-    show_group = parser.add_mutually_exclusive_group()
-    
-    # informations
-    show_group.add_argument('-v', '--verbose', action='store_true', help="detailed output")
+    parser.add_argument('-s', '--status', action='store_true', help="Show devices status")
     
     args = parser.parse_args()
     
@@ -61,7 +56,7 @@ def main():
                 return
             
             # uploads
-            subprocess.check_call(['curl', '-F', 'test_project_name=' + args.project, '-F', 'apk_file=@' + args.apk, '-F', 'apk_test_file=@' + args.test_apk, '-X', 'POST', args.address + '/uploads'])
+            subprocess.call(['curl', '-F', 'test_project_name=' + args.project, '-F', 'apk_file=@' + args.apk, '-F', 'apk_test_file=@' + args.test_apk, '-X', 'POST', args.address + '/uploads'])
     
         if args.apk is None and args.test_apk is None:
             args.apk = ''
@@ -83,23 +78,13 @@ def main():
             json.dump(data, outfile, indent=4)
 
         conditions = ""
-        full_conditions = ""
 
         for key in data['devices']:
-            conditions += str(data['devices'][key])
-            full_conditions += key + ": " + str(data['devices'][key]) + "\n"
-        
-        # show detailed informations
-        if args.verbose:
-            print 'The test project name is "' + args.project + '"'
-            print 'APK files are "' + args.apk + '", "' + args.test_apk + '"'
-            print full_conditions
-        
-        # show defualt
-        else:
-            print "Project: " + args.project
-            print "APK: " + args.apk, args.test_apk
-            print "Requirements: " + conditions
+            conditions += key + ": " + str(data['devices'][key]) + "\n"
+            
+        print "Project: " + args.project
+        print "APK: " + args.apk, args.test_apk
+        print conditions
 
         # test
         subprocess.call(['curl', '-F', 'testing_project_json=@testing_project.json', '-X', 'POST', args.address + '/uploads_testing_project'])
