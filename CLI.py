@@ -46,6 +46,10 @@ def main():
     
     args = parser.parse_args()
     
+    if args.status:
+        # get sevices status
+        subprocess.call(['curl', args.address + '/get_devices_status'])
+    
     if args.project:
         CONDITIONS = [args.os, args.api, args.devicetype, args.display, args.arch]
         
@@ -91,10 +95,6 @@ def main():
 
         # remove testing project json
         subprocess.call(['rm', 'testing_project.json'])
-    
-    elif args.status:
-        # get sevices status
-        subprocess.call(['curl', args.address + '/get_devices_status'])
     
     else:
         # home
