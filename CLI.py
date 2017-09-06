@@ -5,6 +5,7 @@ import subprocess
 import json
 
 ALLOWED_EXTENSIONS_APK = set(['apk'])
+CONDITIONS_NAME = ['os', 'API Level', 'deviceType', 'display', 'arch']
 
 # check if the apk_file and apk_test_file are in format
 def allowed_file_apk(filename):
@@ -21,7 +22,7 @@ def create_json(data, object, key, value):
     return data
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(prog='CLI.py', usage='python %(prog)s [options] [args]')
     
     # internet address
     parser.add_argument('-addr', '--address', default='127.0.0.1:5000', type=str, help="Host IP address")
@@ -46,32 +47,32 @@ def main():
     args = parser.parse_args()
     
     if args.project:
+        CONDITIONS = [args.os, args.api, args.devicetype, args.display, args.arch]
+        
+        # if apk and test_apk exist then upload
         if args.apk and args.test_apk:
+            # check file format
             if not allowed_file_apk(args.apk) or not allowed_file_apk(args.test_apk):
                 print "Please make sure the files are in .apk format"
                 return
             
+            # check file exist
             if check_file_exists(args.apk) or check_file_exists(args.test_apk):
                 print "No apk or test_apk file in current folder"
                 return
             
             # uploads
             subprocess.call(['curl', '-F', 'test_project_name=' + args.project, '-F', 'apk_file=@' + args.apk, '-F', 'apk_test_file=@' + args.test_apk, '-X', 'POST', args.address + '/uploads'])
+            print "APK: " + args.apk, args.test_apk
     
-        if args.apk is None and args.test_apk is None:
-            args.apk = ''
-            args.test_apk = ''
-
         data = {}
         data['project'] = {}
         data['devices'] = {}
         
         data = create_json(data, 'project', 'project_name', args.project)
-        data = create_json(data, 'devices', 'os', args.os)
-        data = create_json(data, 'devices', 'API Level', args.api)
-        data = create_json(data, 'devices', 'deviceType', args.devicetype)
-        data = create_json(data, 'devices', 'display', args.display)
-        data = create_json(data, 'devices', 'arch', args.arch)
+        
+        for i in xrange(len(CONDITIONS_NAME)):
+            data = create_json(data, 'devices', CONDITIONS_NAME[i], CONDITIONS[i])
 
         # create testing project json
         with open("testing_project.json", 'w') as outfile:
@@ -81,9 +82,8 @@ def main():
 
         for key in data['devices']:
             conditions += key + ": " + str(data['devices'][key]) + "\n"
-            
+                
         print "Project: " + args.project
-        print "APK: " + args.apk, args.test_apk
         print conditions
 
         # test
