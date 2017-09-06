@@ -48,11 +48,11 @@ def main():
     if args.project:
         if args.apk and args.test_apk:
             if not allowed_file_apk(args.apk) or not allowed_file_apk(args.test_apk):
-                print "please make sure the files are in .apk format"
+                print "Please make sure the files are in .apk format"
                 return
             
             if check_file_exists(args.apk) or check_file_exists(args.test_apk):
-                print "no apk or test_apk file in current folder"
+                print "No apk or test_apk file in current folder"
                 return
             
             # uploads
